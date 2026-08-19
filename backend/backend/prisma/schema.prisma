@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  fullName  String   @map("full_name")
+  email     String   @unique
+  password  String
+  role      String   @default("USER")
+  createdAt DateTime @default(now()) @map("created_at")
+  trips     Trip[]
+
+  @@map("users")
+}
+
+model Trip {
+  id                    Int            @id @default(autoincrement())
+  userId                Int            @map("user_id")
+  destination           String
+  numberOfDays          Int            @map("number_of_days")
+  numberOfTravelers     Int            @map("number_of_travelers")
+  budgetRange           String         @map("budget_range")
+  travelStyle           String         @map("travel_style")
+  notes                 String?
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt
+  isSaved               Boolean        @default(false) @map("is_saved")
+  accessibilityRequired Boolean        @default(false) @map("accessibility_required")
+  budget                Int?
+  children              Int            @default(0)
+  currency              String         @default("INR")
+  endDate               DateTime?      @map("end_date")
+  foodPreference        String?        @map("food_preference")
+  hotelPreference       String?        @map("hotel_preference")
+  seniors               Int            @default(0)
+  specialRequirements   String?        @map("special_requirements")
+  startDate             DateTime?      @map("start_date")
+  startLocation         String?        @map("start_location")
+  transportMode         String?        @map("transport_mode")
+  days                  TripDay[]
+  interests             TripInterest[]
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("trips")
+}
+
+model TripInterest {
+  id       Int    @id @default(autoincrement())
+  tripId   Int    @map("trip_id")
+  interest String
+  trip     Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@map("trip_interests")
+}
+
+model TripDay {
+  id         Int        @id @default(autoincrement())
+  tripId     Int        @map("trip_id")
+  dayNumber  Int        @map("day_number")
+  title      String
+  activities Activity[]
+  trip       Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@map("trip_days")
+}
+
+model Activity {
+  id          Int     @id @default(autoincrement())
+  tripDayId   Int     @map("trip_day_id")
+  time        String
+  place       String
+  type        String
+  description String
+  tripDay     TripDay @relation(fields: [tripDayId], references: [id], onDelete: Cascade)
+
+  @@map("activities")
+}

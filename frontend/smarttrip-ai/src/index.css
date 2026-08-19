@@ -1,0 +1,136 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /*
+   * SmartTrip AI design tokens.
+   * Palette: Ink (navy) / Voyage Blue (primary) / Sky Mist (secondary) /
+   * Amber Route (accent) / Sand (light bg). Values are HSL triplets so
+   * Tailwind can apply opacity modifiers (e.g. bg-primary/10).
+   */
+  :root {
+    --background: 36 33% 97%;
+    --foreground: 222 39% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 39% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 39% 11%;
+
+    --primary: 213 55% 26%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 33% 94%;
+    --secondary-foreground: 222 39% 11%;
+
+    --accent: 30 72% 55%;
+    --accent-foreground: 24 45% 14%;
+
+    --muted: 210 20% 95%;
+    --muted-foreground: 220 9% 40%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 20% 88%;
+    --input: 214 20% 88%;
+    --ring: 213 55% 26%;
+
+    --status-pending: 220 9% 62%;
+    --status-running: 30 80% 55%;
+    --status-completed: 152 55% 34%;
+    --status-failed: 0 70% 50%;
+
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    --background: 222 47% 8%;
+    --foreground: 210 20% 96%;
+
+    --card: 222 40% 11%;
+    --card-foreground: 210 20% 96%;
+
+    --popover: 222 40% 11%;
+    --popover-foreground: 210 20% 96%;
+
+    --primary: 213 70% 62%;
+    --primary-foreground: 222 47% 10%;
+
+    --secondary: 220 30% 16%;
+    --secondary-foreground: 210 20% 96%;
+
+    --accent: 30 80% 60%;
+    --accent-foreground: 24 45% 12%;
+
+    --muted: 220 25% 14%;
+    --muted-foreground: 216 12% 65%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 22% 20%;
+    --input: 220 22% 20%;
+    --ring: 213 70% 62%;
+
+    --status-pending: 220 9% 45%;
+    --status-running: 30 80% 60%;
+    --status-completed: 152 45% 45%;
+    --status-failed: 0 65% 58%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer utilities {
+  /*
+   * Signature visual motif: a dashed "flight path" rule. Used sparingly —
+   * agent-timeline connectors, section dividers — never as blanket
+   * decoration. Respects reduced motion by not animating unless the
+   * .route-line--animated modifier is added and motion is allowed.
+   */
+  .route-line {
+    background-image: linear-gradient(
+      to bottom,
+      hsl(var(--border)) 0,
+      hsl(var(--border)) 6px,
+      transparent 6px,
+      transparent 12px
+    );
+    background-size: 2px 12px;
+    background-repeat: repeat-y;
+    width: 2px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .route-line--animated {
+      animation: route-flow 1.2s linear infinite;
+    }
+  }
+
+  @keyframes route-flow {
+    to {
+      background-position: 0 12px;
+    }
+  }
+}

@@ -1,0 +1,22 @@
+# IntelliJ
+.idea/
+*.iml
+
+# Spring Boot / Gradle
+.gradle/
+build/
+out/
+
+# Kotlin
+.kotlin/
+
+# Node
+node_modules/
+
+# Environment files
+.env
+*.env
+
+# OS files
+.DS_Store
+Thumbs.db
