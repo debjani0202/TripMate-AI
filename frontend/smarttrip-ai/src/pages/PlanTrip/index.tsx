@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { createTrip } from "@/services/api/trip.service";
+
 
 import planTripBg from "@/assets/images/plan-trip/plan-trip-bg.jpeg";
 
@@ -87,53 +87,32 @@ export function PlanTripPage() {
       ) + 1;
 
     try {
-      const response = await createTrip({
-        startLocation: startingLocation.trim(),
-
+      const travelRequest = {
+        start_location: startingLocation.trim(),
         destination: destination.trim(),
-
-        startDate,
-
-        endDate,
-
-        numberOfDays,
-
-        numberOfTravelers: travelers,
-
-        budget,
-
-        currency,
-
-        budgetRange: String(budget),
-
-        travelStyle,
-
-        transportMode: transportPreference,
-
-        hotelPreference,
-
-        foodPreference: "Let AI Decide",
-
-        children: 0,
-
-        seniors: 0,
-
-        accessibilityRequired: false,
-
+        start_date: startDate,
+        end_date: endDate,
+        days: numberOfDays,
+        budget: budget,
+        currency: currency,
+        travelers: travelers,
         interests: [],
-      });
+        travel_style: travelStyle,
+        transport_mode: transportPreference === "Let AI Decide" ? "" : transportPreference,
+        hotel_preference: hotelPreference === "Let AI Decide" ? "" : hotelPreference,
+        food_preference: "Let AI Decide",
+        special_requirements: "None",
+        children: 0,
+        seniors: 0,
+        accessibility_required: false,
+      };
 
-      console.log(
-        "Trip created successfully:",
-        response,
-      );
+      sessionStorage.setItem("smarttrip_latest_request", JSON.stringify(travelRequest));
 
-      const tripId = response.data.trip.id;
-
-      navigate(`/generate/${tripId}`);
+      navigate("/generate/new", { state: { travelRequest } });
     } catch (error) {
       console.error(
-        "Failed to create trip:",
+        "Failed to prepare travel request:",
         error,
       );
     }

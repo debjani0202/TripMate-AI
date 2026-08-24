@@ -20,7 +20,7 @@ interface TripOverviewProps {
 
 // Get the correct destination image.
 const getDestinationImage = (destination: string) => {
-  const value = destination.toLowerCase();
+  const value = destination.toLowerCase().trim();
 
   if (value.includes("rajasthan")) {
     return rajasthanImage;
@@ -46,8 +46,11 @@ const getDestinationImage = (destination: string) => {
     return goaImage;
   }
 
-  // Default image if destination is not available.
-  return rajasthanImage;
+  // For destinations that do not have
+  // a dedicated local image yet, use a
+  // neutral image instead of incorrectly
+  // showing Rajasthan.
+  return "";
 };
 
 export function TripOverview({
@@ -78,11 +81,15 @@ export function TripOverview({
       {/* Destination image */}
 
       <div className="relative h-36 w-full overflow-hidden sm:h-40">
-        <img
-          src={destinationImage}
-          alt={summary.destination}
-          className="h-full w-full object-cover"
-        />
+        {destinationImage ? (
+          <img
+            src={destinationImage}
+            alt={summary.destination}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="h-full w-full bg-gradient-to-br from-orange-200 via-amber-100 to-orange-50 dark:from-[#3a2a1c] dark:via-[#29231d] dark:to-[#191c22]" />
+        )}
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
 

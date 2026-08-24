@@ -12,16 +12,26 @@ export interface LoginRequest {
 }
 
 export interface AuthUser {
-  id: string;
+  id: number;
   fullName: string;
   email: string;
   role: string;
   createdAt: string;
+  age: number | null;
+  phone: string | null;
+  location: string | null;
+  profilePhoto: string | null;
 }
 
 export interface AuthResponse {
   token: string;
   user: AuthUser;
+}
+export interface UpdateProfileRequest {
+  fullName?: string;
+  age?: number | null;
+  phone?: string | null;
+  location?: string | null;
 }
 
 interface RegisterApiResponse {
@@ -70,6 +80,21 @@ export async function loginUser(
 export async function getCurrentUser(): Promise<AuthUser> {
   const response =
     await apiClient.get<CurrentUserApiResponse>("/auth/me");
+
+  return response.data.data.user;
+}
+
+
+export async function updateProfile(
+  data: UpdateProfileRequest,
+): Promise<AuthUser> {
+  const response = await apiClient.patch<{
+    success: boolean;
+    message: string;
+    data: {
+      user: AuthUser;
+    };
+  }>("/auth/profile", data);
 
   return response.data.data.user;
 }

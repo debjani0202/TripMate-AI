@@ -6,7 +6,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 import { AgentProgress } from "@/components/trip/AgentProgress";
@@ -23,15 +23,25 @@ import { BudgetSection } from "@/components/trip/BudgetSection";
 import { PackingSection } from "@/components/trip/PackingSection";
 
 import {
-  generateItinerary,
+  TravelRequest,
 } from "@/services/api/itinerary.service";
+
+import {
+  saveGeneratedTrip,
+} from "@/services/api/trip.service";
+
+import { useAuth } from "@/context/AuthContext";
 
 import type {
   TravelPlanOutput,
-} from "@/types/travelPlan";
+} from "@/services/api/itinerary.service";
+
+let generationInProgress = false;
 
 export function TripGenerationPage() {
   const { tripId } = useParams();
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
 
   // --------------------------------------------------
   // Trip generation state
@@ -51,17 +61,11 @@ export function TripGenerationPage() {
   // --------------------------------------------------
 
   const [isWishlisted, setIsWishlisted] =
-    useState(() => {
-      if (!tripId) {
-        return false;
-      }
+    useState(false);
 
-      return (
-        localStorage.getItem(
-          `smarttrip-wishlist-${tripId}`,
-        ) !== null
-      );
-    });
+  // Keep the original request so the generated plan can be saved later
+  const [travelRequest, setTravelRequest] =
+    useState<TravelRequest | null>(null);
 
   // --------------------------------------------------
   // Dynamic agent workflow
@@ -152,22 +156,42 @@ export function TripGenerationPage() {
   // --------------------------------------------------
 
   const runGeneration = async () => {
+    if (generationInProgress) {
+      return;
+    }
+
     if (!tripId) {
       setError("Trip ID is missing.");
       setIsGenerating(false);
       return;
     }
 
-    const parsedTripId = Number(tripId);
+    let request: TravelRequest | null = null;
 
-    if (
-      !Number.isInteger(parsedTripId) ||
-      parsedTripId <= 0
-    ) {
-      setError("Invalid trip ID.");
+    if (tripId === "new") {
+      const stateRequest = location.state?.travelRequest;
+      const cachedRequest = sessionStorage.getItem("smarttrip_latest_request");
+      if (stateRequest) {
+        request = stateRequest;
+      } else if (cachedRequest) {
+        try {
+          request = JSON.parse(cachedRequest);
+        } catch (e) {
+          console.error("Failed to parse cached request:", e);
+        }
+      }
+    }
+
+    if (!request) {
+      setError("Travel request parameters not found.");
       setIsGenerating(false);
       return;
     }
+
+    generationInProgress = true;
+
+    // Keep the request available for Wishlist after generation
+    setTravelRequest(request);
 
     setIsGenerating(true);
     setTravelPlan(null);
@@ -187,101 +211,70 @@ export function TripGenerationPage() {
 
     try {
       // --------------------------------------------------
-      // Start the visible workflow
-      //
-      // This is a frontend representation of the mock
-      // AI generation process. The actual mock provider
-      // runs on the Node backend.
+      // Actual direct backend generation via SSE
       // --------------------------------------------------
+      const response = await fetch("http://127.0.0.1:8000/travel/plan", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(request),
+      });
 
-      setAgentStatuses((current) => ({
-        ...current,
-        research: "running",
-      }));
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
 
-      await wait(250);
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("Response body is not readable");
+      }
 
-      setAgentStatuses((current) => ({
-        ...current,
-        research: "completed",
-        weather: "running",
-      }));
+      const decoder = new TextDecoder();
+      let buffer = "";
 
-      await wait(250);
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
 
-      setAgentStatuses((current) => ({
-        ...current,
-        weather: "completed",
-        transport: "running",
-      }));
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
-      await wait(250);
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const dataStr = line.slice(6).trim();
+            if (!dataStr) continue;
 
-      setAgentStatuses((current) => ({
-        ...current,
-        transport: "completed",
-        accommodation: "running",
-      }));
+            const event = JSON.parse(dataStr);
 
-      await wait(250);
-
-      setAgentStatuses((current) => ({
-        ...current,
-        accommodation: "completed",
-        restaurants: "running",
-      }));
-
-      await wait(250);
-
-      setAgentStatuses((current) => ({
-        ...current,
-        restaurants: "completed",
-        budget: "running",
-      }));
-
-      await wait(250);
-
-      setAgentStatuses((current) => ({
-        ...current,
-        budget: "completed",
-        packing: "running",
-      }));
-
-      await wait(250);
-
-      setAgentStatuses((current) => ({
-        ...current,
-        packing: "completed",
-        planner: "running",
-      }));
-
-      // --------------------------------------------------
-      // Actual backend generation
-      // --------------------------------------------------
-
-      const response =
-        await generateItinerary({
-          tripId: parsedTripId,
-        });
-
-      // --------------------------------------------------
-      // Final planner completed
-      // --------------------------------------------------
-
-      setAgentStatuses((current) => ({
-        ...current,
-        planner: "completed",
-      }));
-
-      // --------------------------------------------------
-      // Store actual backend travel plan
-      // --------------------------------------------------
-
-      setTravelPlan(
-        response.data.travelPlan as TravelPlanOutput,
-      );
-
-      setIsGenerating(false);
+            if (event.type === "task_started") {
+              const taskKey = event.task;
+              setAgentStatuses((current) => ({
+                ...current,
+                [taskKey]: "running",
+              }));
+            } else if (event.type === "task_completed") {
+              const taskKey = event.task;
+              setAgentStatuses((current) => ({
+                ...current,
+                [taskKey]: "completed",
+              }));
+            } else if (event.type === "task_failed") {
+              const taskKey = event.task;
+              setAgentStatuses((current) => ({
+                ...current,
+                [taskKey]: "failed",
+              }));
+            } else if (event.type === "final_result") {
+              setTravelPlan(event.travel_plan);
+              setIsGenerating(false);
+            } else if (event.type === "error") {
+              throw new Error(event.detail || "Generation failed");
+            }
+          }
+        }
+      }
     } catch (generationError) {
       console.error(
         "Itinerary generation failed:",
@@ -293,6 +286,8 @@ export function TripGenerationPage() {
       );
 
       setIsGenerating(false);
+    } finally {
+      generationInProgress = false;
     }
   };
 
@@ -324,28 +319,58 @@ export function TripGenerationPage() {
   // Wishlist
   // --------------------------------------------------
 
-  const handleWishlist = () => {
-    if (!tripId || !travelPlan) {
+  const handleWishlist = async () => {
+    if (!travelPlan || !travelRequest) {
       return;
     }
 
-    const storageKey =
-      `smarttrip-wishlist-${tripId}`;
+    // A user must be logged in before a trip can be saved
+    if (!isAuthenticated) {
+      window.alert(
+        "Please log in to save this trip to your wishlist.",
+      );
+      return;
+    }
 
+    // Removing a saved trip will be connected to the database in the My Trips step
     if (isWishlisted) {
-      localStorage.removeItem(storageKey);
-
-      setIsWishlisted(false);
-
       return;
     }
 
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify(travelPlan),
-    );
+    try {
+      await saveGeneratedTrip({
+        startLocation: travelRequest.start_location,
+        destination: travelRequest.destination,
+        startDate: travelRequest.start_date,
+        endDate: travelRequest.end_date,
+        numberOfDays: travelRequest.days,
+        numberOfTravelers: travelRequest.travelers,
+        budget: travelRequest.budget,
+        currency: travelRequest.currency,
+        budgetRange: String(travelRequest.budget),
+        travelStyle: travelRequest.travel_style,
+        transportMode: travelRequest.transport_mode,
+        hotelPreference: travelRequest.hotel_preference,
+        foodPreference: travelRequest.food_preference,
+        specialRequirements: travelRequest.special_requirements,
+        children: travelRequest.children,
+        seniors: travelRequest.seniors,
+        accessibilityRequired: travelRequest.accessibility_required,
+        interests: travelRequest.interests,
+        travelPlan,
+      });
 
-    setIsWishlisted(true);
+      setIsWishlisted(true);
+    } catch (error) {
+      console.error(
+        "Failed to save generated trip:",
+        error,
+      );
+
+      window.alert(
+        "Unable to save this trip. Please try again.",
+      );
+    }
   };
 
   // --------------------------------------------------
@@ -971,16 +996,4 @@ export function TripGenerationPage() {
 
     </main>
   );
-}
-
-// --------------------------------------------------
-// Small helper for the visible workflow.
-// --------------------------------------------------
-
-function wait(
-  milliseconds: number,
-): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, milliseconds);
-  });
 }

@@ -139,6 +139,49 @@ export interface GenerateItineraryResponse {
   };
 }
 
+import axios from "axios";
+
+export interface TravelRequest {
+  start_location: string;
+  destination: string;
+  start_date: string;
+  end_date: string;
+  days: number;
+  budget: number;
+  currency: string;
+  travelers: number;
+  interests: string[];
+  travel_style: string;
+  transport_mode: string;
+  hotel_preference: string;
+  food_preference: string;
+  special_requirements: string;
+  children: number;
+  seniors: number;
+  accessibility_required: boolean;
+}
+
+export interface TravelPlanResponse {
+  success: boolean;
+  message: string;
+  travel_plan: TravelPlanOutput;
+}
+
+export async function generateTravelPlanDirect(
+  data: TravelRequest,
+): Promise<TravelPlanResponse> {
+  const response = await axios.post<TravelPlanResponse>(
+    "http://127.0.0.1:8000/travel/plan",
+    data,
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  return response.data;
+}
+
 export async function generateItinerary(
   data: GenerateItineraryRequest,
 ): Promise<GenerateItineraryResponse> {

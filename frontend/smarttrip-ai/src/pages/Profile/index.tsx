@@ -1,23 +1,214 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  CheckCircle2,
   Globe2,
   LogIn,
-  LogOut,
+  Loader2,
   Mail,
   MapPin,
-  Pencil,
   Phone,
   Plane,
   UserRound,
+  Pencil,
+  Save,
   X,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import planTripBg from "@/assets/images/plan-trip/plan-trip-bg.jpeg";
+import {
+  getCurrentUser,
+  updateProfile,
+  type AuthUser,
+  type UpdateProfileRequest,
+} from "@/services/api/auth.service";
 
 export function ProfilePage() {
-  const [editMode, setEditMode] = useState(false);
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState<UpdateProfileRequest>({
+    fullName: "",
+    age: null,
+    phone: "",
+    location: "",
+  });
+
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        setIsLoading(true);
+
+        const currentUser = await getCurrentUser();
+
+        setUser(currentUser);
+        setIsAuthenticated(true);
+
+        setFormData({
+          fullName: currentUser.fullName,
+          age: currentUser.age,
+          phone: currentUser.phone ?? "",
+          location: currentUser.location ?? "",
+        });
+      } catch (error) {
+        console.error("Failed to load profile:", error);
+
+        setUser(null);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCurrentUser();
+  }, []);
+
+  const handleEdit = () => {
+    if (!user) {
+      return;
+    }
+
+    setFormData({
+      fullName: user.fullName,
+      age: user.age,
+      phone: user.phone ?? "",
+      location: user.location ?? "",
+    });
+
+    setSuccessMessage(null);
+    setErrorMessage(null);
+    setIsEditing(true);
+  };
+
+  const handleCancel = () => {
+    if (!user) {
+      return;
+    }
+
+    setFormData({
+      fullName: user.fullName,
+      age: user.age,
+      phone: user.phone ?? "",
+      location: user.location ?? "",
+    });
+
+    setSuccessMessage(null);
+    setErrorMessage(null);
+    setIsEditing(false);
+  };
+
+  const handleChange = (
+    field: keyof UpdateProfileRequest,
+    value: string,
+  ) => {
+    setFormData((previous) => ({
+      ...previous,
+      [field]: value,
+    }));
+  };
+
+  const handleAgeChange = (value: string) => {
+    setFormData((previous) => ({
+      ...previous,
+      age: value === "" ? null : Number(value),
+    }));
+  };
+
+  const handleSave = async () => {
+    if (!user) {
+      return;
+    }
+
+    if (!formData.fullName?.trim()) {
+      setErrorMessage("Full name is required.");
+      return;
+    }
+
+    if (
+      formData.age !== null &&
+      formData.age !== undefined &&
+      (!Number.isInteger(formData.age) ||
+        formData.age < 1 ||
+        formData.age > 120)
+    ) {
+      setErrorMessage("Age must be between 1 and 120.");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      setSuccessMessage(null);
+      setErrorMessage(null);
+
+      const updatedUser = await updateProfile({
+        fullName: formData.fullName.trim(),
+        age: formData.age,
+        phone: formData.phone?.trim() || null,
+        location: formData.location?.trim() || null,
+      });
+
+      setUser(updatedUser);
+
+      setFormData({
+        fullName: updatedUser.fullName,
+        age: updatedUser.age,
+        phone: updatedUser.phone ?? "",
+        location: updatedUser.location ?? "",
+      });
+
+      setIsEditing(false);
+      setSuccessMessage("Profile updated successfully.");
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+
+      setErrorMessage(
+        "Unable to update your profile. Please try again.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <main className="relative min-h-screen overflow-hidden bg-[#f4eee4] text-[#17233d]">
+        <div className="pointer-events-none fixed inset-0">
+          <img
+            src={planTripBg}
+            alt=""
+            className="h-full w-full object-cover object-center"
+          />
+
+          <div className="absolute inset-0 bg-[#f5eee4]/20" />
+
+          <div className="absolute inset-0 bg-gradient-to-b from-white/25 via-transparent to-[#f4eee4]/35" />
+        </div>
+
+        <div className="relative z-10 flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-8">
+          <section className="flex w-full max-w-[560px] flex-col items-center justify-center gap-3 rounded-[1.5rem] border border-orange-200/80 bg-[#fffdf9]/95 px-8 py-16 text-center shadow-[0_20px_60px_rgba(52,45,34,0.24)] backdrop-blur-sm">
+            <Loader2 className="h-8 w-8 animate-spin text-[#f56b16]" />
+
+            <h1 className="font-display text-2xl font-bold text-[#17233d]">
+              Loading your profile...
+            </h1>
+
+            <p className="text-sm text-[#68748a]">
+              Fetching your account information.
+            </p>
+          </section>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f4eee4] text-[#17233d]">
@@ -39,7 +230,6 @@ export function ProfilePage() {
         <section className="w-full max-w-[560px] overflow-hidden rounded-[1.5rem] border border-orange-200/80 bg-[#fffdf9]/95 shadow-[0_20px_60px_rgba(52,45,34,0.24)] backdrop-blur-sm">
           {/* Profile header */}
           <div className="relative border-b border-orange-100 px-5 pb-7 pt-8 text-center sm:px-8 sm:pt-9">
-            {/* Decorative travel route */}
             <div className="pointer-events-none absolute right-0 top-0 h-28 w-40 overflow-hidden opacity-40">
               <svg
                 viewBox="0 0 160 110"
@@ -69,7 +259,7 @@ export function ProfilePage() {
               </svg>
             </div>
 
-            {/* Neutral profile icon */}
+            {/* Profile icon */}
             <div className="relative mx-auto flex h-28 w-28 items-center justify-center rounded-full border-4 border-white bg-orange-50 text-[#f56b16] shadow-[0_8px_25px_rgba(52,45,34,0.16)] sm:h-32 sm:w-32">
               <UserRound className="h-14 w-14 sm:h-16 sm:w-16" />
             </div>
@@ -85,126 +275,315 @@ export function ProfilePage() {
               </div>
 
               <p className="mx-auto mt-3 max-w-[400px] text-xs leading-5 text-[#68748a] sm:text-sm">
-                Sign in to personalize your SmartTrip experience and manage
-                your traveler profile.
+                {isAuthenticated
+                  ? "Manage your SmartTrip account and travel profile."
+                  : "Sign in to personalize your SmartTrip experience and manage your traveler profile."}
               </p>
             </div>
           </div>
 
           {/* Account state */}
           <div className="px-5 py-5 sm:px-8 sm:py-6">
-            <div className="mb-4">
-              <h2 className="text-base font-bold text-[#17233d]">
-                Profile Information
-              </h2>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold text-[#17233d]">
+                  Profile Information
+                </h2>
 
-              <p className="mt-0.5 text-xs text-[#718096]">
-                Your account details will appear here after you sign in.
-              </p>
+                <p className="mt-0.5 text-xs text-[#718096]">
+                  Your account details.
+                </p>
+              </div>
+
+              {isAuthenticated && user && !isEditing && (
+                <button
+                  type="button"
+                  onClick={handleEdit}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-bold text-[#f26b21] transition hover:bg-orange-100"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit
+                </button>
+              )}
             </div>
 
-            {/* Not logged in notice */}
-            <div className="rounded-2xl border border-orange-200 bg-orange-50/80 p-4 sm:p-5">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#f56b16] shadow-sm">
-                  <UserRound className="h-5 w-5" />
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-bold text-[#17233d]">
-                    You're not signed in
-                  </h3>
-
-                  <p className="mt-1 text-xs leading-5 text-[#68748a]">
-                    Log in to view and update your name, age, phone number,
-                    location, and other profile information.
-                  </p>
-                </div>
+            {/* Success message */}
+            {successMessage && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3.5 py-3 text-sm text-green-700">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                {successMessage}
               </div>
-            </div>
+            )}
 
-            {/* Disabled profile fields preview */}
-            <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
-              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 opacity-70">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-500">
-                  <UserRound className="h-4 w-4" />
+            {/* Error message */}
+            {errorMessage && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {errorMessage}
+              </div>
+            )}
+
+            {/* Logged in */}
+            {isAuthenticated && user ? (
+              <>
+                <div className="rounded-2xl border border-green-200 bg-green-50/80 p-4 sm:p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-green-600 shadow-sm">
+                      <UserRound className="h-5 w-5" />
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-bold text-[#17233d]">
+                        Welcome,{" "}
+                        {isEditing
+                          ? formData.fullName || user.fullName
+                          : user.fullName}
+                      </h3>
+
+                      <p className="mt-1 text-xs leading-5 text-[#68748a]">
+                        Your account information is loaded from your SmartTrip
+                        account.
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
+                <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+                  {/* Full Name */}
+                  <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-500">
+                        <UserRound className="h-4 w-4" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8a94a6]">
+                          Full Name
+                        </p>
+
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={formData.fullName ?? ""}
+                            onChange={(event) =>
+                              handleChange(
+                                "fullName",
+                                event.target.value,
+                              )
+                            }
+                            className="mt-1 w-full rounded-lg border border-orange-200 bg-orange-50/50 px-2.5 py-1.5 text-sm font-semibold text-[#17233d] outline-none focus:border-[#f56b16] focus:ring-2 focus:ring-orange-100"
+                          />
+                        ) : (
+                          <p className="truncate text-sm font-semibold text-[#17233d]">
+                            {user.fullName}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Age */}
+                  <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-500">
+                        <UserRound className="h-4 w-4" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8a94a6]">
+                          Age
+                        </p>
+
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            min="1"
+                            max="120"
+                            value={formData.age ?? ""}
+                            onChange={(event) =>
+                              handleAgeChange(event.target.value)
+                            }
+                            placeholder="Enter age"
+                            className="mt-1 w-full rounded-lg border border-orange-200 bg-orange-50/50 px-2.5 py-1.5 text-sm font-semibold text-[#17233d] outline-none focus:border-[#f56b16] focus:ring-2 focus:ring-orange-100"
+                          />
+                        ) : (
+                          <p className="text-sm font-semibold text-[#17233d]">
+                            {user.age ?? "Not available"}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Email */}
+                  <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-[#f26b16]">
+                        <Mail className="h-4 w-4" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8a94a6]">
+                          Login Email
+                        </p>
+
+                        <p className="truncate text-sm font-semibold text-[#17233d]">
+                          {user.email}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Phone */}
+                  <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-50 text-green-600">
+                        <Phone className="h-4 w-4" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8a94a6]">
+                          Phone
+                        </p>
+
+                        {isEditing ? (
+                          <input
+                            type="tel"
+                            value={formData.phone ?? ""}
+                            onChange={(event) =>
+                              handleChange(
+                                "phone",
+                                event.target.value,
+                              )
+                            }
+                            placeholder="Enter phone number"
+                            className="mt-1 w-full rounded-lg border border-orange-200 bg-orange-50/50 px-2.5 py-1.5 text-sm font-semibold text-[#17233d] outline-none focus:border-[#f56b16] focus:ring-2 focus:ring-orange-100"
+                          />
+                        ) : (
+                          <p className="truncate text-sm font-semibold text-[#17233d]">
+                            {user.phone ?? "Not available"}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Location */}
+                  <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-3 sm:col-span-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-500">
+                        <MapPin className="h-4 w-4" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8a94a6]">
+                          Location
+                        </p>
+
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={formData.location ?? ""}
+                            onChange={(event) =>
+                              handleChange(
+                                "location",
+                                event.target.value,
+                              )
+                            }
+                            placeholder="Enter location"
+                            className="mt-1 w-full rounded-lg border border-orange-200 bg-orange-50/50 px-2.5 py-1.5 text-sm font-semibold text-[#17233d] outline-none focus:border-[#f56b16] focus:ring-2 focus:ring-orange-100"
+                          />
+                        ) : (
+                          <p className="truncate text-sm font-semibold text-[#17233d]">
+                            {user.location ?? "Not available"}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Role */}
+                  <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-3 sm:col-span-2">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-[#f26b16]">
+                      <UserRound className="h-4 w-4" />
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8a94a6]">
+                        Account Role
+                      </p>
+
+                      <p className="text-sm font-semibold text-[#17233d]">
+                        {user.role}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Member since */}
+                <div className="mt-3 rounded-xl border border-orange-100 bg-orange-50/60 px-4 py-3">
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8a94a6]">
-                    Full Name
+                    Member Since
                   </p>
 
-                  <p className="text-sm font-semibold text-[#8a94a6]">
-                    Not available
+                  <p className="mt-1 text-sm font-semibold text-[#17233d]">
+                    {new Date(user.createdAt).toLocaleDateString()}
                   </p>
+                </div>
+
+                {/* Edit actions */}
+                {isEditing && (
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#f56b16] px-5 text-sm font-bold text-white shadow-[0_7px_18px_rgba(245,107,22,0.22)] transition hover:bg-[#e95f0d] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4" />
+                          Save Changes
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleCancel}
+                      disabled={isSaving}
+                      className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-[#17233d] transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <X className="h-4 w-4" />
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="rounded-2xl border border-orange-200 bg-orange-50/80 p-4 sm:p-5">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#f56b16] shadow-sm">
+                    <UserRound className="h-5 w-5" />
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-bold text-[#17233d]">
+                      You're not signed in
+                    </h3>
+
+                    <p className="mt-1 text-xs leading-5 text-[#68748a]">
+                      Log in to view and edit your account information.
+                    </p>
+                  </div>
                 </div>
               </div>
-
-              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 opacity-70">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-500">
-                  <UserRound className="h-4 w-4" />
-                </div>
-
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8a94a6]">
-                    Age
-                  </p>
-
-                  <p className="text-sm font-semibold text-[#8a94a6]">
-                    Not available
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 opacity-70">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-[#f26b16]">
-                  <Mail className="h-4 w-4" />
-                </div>
-
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8a94a6]">
-                    Login Email
-                  </p>
-
-                  <p className="text-sm font-semibold text-[#8a94a6]">
-                    Not signed in
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 opacity-70">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-50 text-green-600">
-                  <Phone className="h-4 w-4" />
-                </div>
-
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8a94a6]">
-                    Phone
-                  </p>
-
-                  <p className="text-sm font-semibold text-[#8a94a6]">
-                    Not available
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 opacity-70 sm:col-span-2">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-500">
-                  <MapPin className="h-4 w-4" />
-                </div>
-
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8a94a6]">
-                    Location
-                  </p>
-
-                  <p className="text-sm font-semibold text-[#8a94a6]">
-                    Not available
-                  </p>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Travel activity */}
@@ -259,16 +638,18 @@ export function ProfilePage() {
             </div>
           </div>
 
-          {/* Sign in / logout */}
-          <div className="border-t border-orange-100 px-5 py-5 sm:px-8">
-            <Link
-              to="/login"
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#f56b16] px-5 text-sm font-bold text-white shadow-[0_7px_18px_rgba(245,107,22,0.22)] transition hover:-translate-y-0.5 hover:bg-[#e95f0d] hover:shadow-[0_9px_22px_rgba(245,107,22,0.3)]"
-            >
-              <LogIn className="h-4 w-4" />
-              Log In
-            </Link>
-          </div>
+          {/* Sign in */}
+          {!isAuthenticated && (
+            <div className="border-t border-orange-100 px-5 py-5 sm:px-8">
+              <Link
+                to="/login"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#f56b16] px-5 text-sm font-bold text-white shadow-[0_7px_18px_rgba(245,107,22,0.22)] transition hover:-translate-y-0.5 hover:bg-[#e95f0d] hover:shadow-[0_9px_22px_rgba(245,107,22,0.3)]"
+              >
+                <LogIn className="h-4 w-4" />
+                Log In
+              </Link>
+            </div>
+          )}
         </section>
       </div>
     </main>

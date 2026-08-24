@@ -2,30 +2,30 @@ import type { TravelPlan } from "@/types/travel";
 
 export const mockTravelPlan: TravelPlan = {
   trip_summary: {
-    destination: "Rajasthan, India",
+    destination: "TEST RAJASTHAN",
     start_date: "2026-09-14",
     end_date: "2026-09-19",
     duration_days: 6,
     travelers: 2,
-    budget: 50000,
+    budget: 99999,
     currency: "INR",
-    travel_style: "Comfort",
+    travel_style: "TEST COMFORT",
   },
 
   selected_cities: [
     {
-      city: "Jaipur",
-      why_visit: "Historic forts, palaces, markets and local culture.",
+      city: "TEST JAIPUR",
+      why_visit: "TEST JAIPUR REASON",
       days_allocated: 2,
     },
     {
-      city: "Jodhpur",
-      why_visit: "Mehrangarh Fort, blue streets and Marwari culture.",
+      city: "TEST JODHPUR",
+      why_visit: "TEST JODHPUR REASON",
       days_allocated: 2,
     },
     {
-      city: "Udaipur",
-      why_visit: "Lakes, palaces and relaxed scenic experiences.",
+      city: "TEST UDAIPUR",
+      why_visit: "TEST UDAIPUR REASON",
       days_allocated: 2,
     },
   ],
@@ -34,163 +34,134 @@ export const mockTravelPlan: TravelPlan = {
     {
       day: 1,
       date: "2026-09-14",
-      city: "Jaipur",
-      morning: "Arrive in Jaipur and check into the hotel.",
-      afternoon: "Explore City Palace and Jantar Mantar.",
-      evening: "Visit Hawa Mahal and explore the nearby market.",
+      city: "TEST JAIPUR",
+
+      morning: "TEST RAJASTHAN MORNING",
+
+      afternoon: "TEST RAJASTHAN AFTERNOON",
+
+      evening: "TEST RAJASTHAN EVENING",
+
       meals: {
-        breakfast: "Hotel breakfast",
-        lunch: "Local Rajasthani thali",
-        dinner: "Traditional Rajasthani dinner",
+        breakfast: "TEST RAJASTHAN BREAKFAST",
+        lunch: "TEST RAJASTHAN LUNCH",
+        dinner: "TEST RAJASTHAN DINNER",
       },
-      transport: "Airport transfer and local cab",
-      hotel: "Comfort hotel in central Jaipur",
-      estimated_daily_cost: 8500,
+
+      transport: "TEST RAJASTHAN TRANSPORT",
+
+      hotel: "TEST RAJASTHAN HOTEL",
+
+      estimated_daily_cost: 9999,
+
       tips: [
-        "Start sightseeing early.",
-        "Carry water during outdoor visits.",
+        "TEST RAJASTHAN TIP 1",
+        "TEST RAJASTHAN TIP 2",
       ],
     },
+
     {
       day: 2,
       date: "2026-09-15",
-      city: "Jaipur",
-      morning: "Visit Amber Fort.",
-      afternoon: "Explore Jal Mahal and local handicraft markets.",
-      evening: "Enjoy a cultural evening with traditional performances.",
+      city: "TEST JODHPUR",
+
+      morning: "TEST DAY 2 MORNING",
+
+      afternoon: "TEST DAY 2 AFTERNOON",
+
+      evening: "TEST DAY 2 EVENING",
+
       meals: {
-        breakfast: "Hotel breakfast",
-        lunch: "Local vegetarian restaurant",
-        dinner: "Rajasthani cuisine",
+        breakfast: "TEST DAY 2 BREAKFAST",
+        lunch: "TEST DAY 2 LUNCH",
+        dinner: "TEST DAY 2 DINNER",
       },
-      transport: "Private cab",
-      hotel: "Comfort hotel in central Jaipur",
-      estimated_daily_cost: 8000,
+
+      transport: "TEST DAY 2 TRANSPORT",
+
+      hotel: "TEST DAY 2 HOTEL",
+
+      estimated_daily_cost: 8888,
+
       tips: [
-        "Wear comfortable shoes.",
-        "Keep some cash for local markets.",
+        "TEST DAY 2 TIP",
       ],
     },
+
     {
       day: 3,
       date: "2026-09-16",
-      city: "Jodhpur",
-      morning: "Travel from Jaipur to Jodhpur.",
-      afternoon: "Check in and explore the Blue City.",
-      evening: "Watch sunset from a rooftop viewpoint.",
+      city: "TEST UDAIPUR",
+
+      morning: "TEST DAY 3 MORNING",
+
+      afternoon: "TEST DAY 3 AFTERNOON",
+
+      evening: "TEST DAY 3 EVENING",
+
       meals: {
-        breakfast: "Hotel breakfast",
-        lunch: "Restaurant near the old city",
-        dinner: "Local Marwari cuisine",
+        breakfast: "TEST DAY 3 BREAKFAST",
+        lunch: "TEST DAY 3 LUNCH",
+        dinner: "TEST DAY 3 DINNER",
       },
-      transport: "Intercity train",
-      hotel: "Heritage hotel in Jodhpur",
-      estimated_daily_cost: 9000,
+
+      transport: "TEST DAY 3 TRANSPORT",
+
+      hotel: "TEST DAY 3 HOTEL",
+
+      estimated_daily_cost: 7777,
+
       tips: [
-        "Keep luggage light during city exploration.",
-      ],
-    },
-    {
-      day: 4,
-      date: "2026-09-17",
-      city: "Jodhpur",
-      morning: "Explore Mehrangarh Fort.",
-      afternoon: "Visit Jaswant Thada and local markets.",
-      evening: "Relax at a rooftop restaurant.",
-      meals: {
-        breakfast: "Hotel breakfast",
-        lunch: "Local restaurant",
-        dinner: "Rooftop dinner",
-      },
-      transport: "Local cab",
-      hotel: "Heritage hotel in Jodhpur",
-      estimated_daily_cost: 8500,
-      tips: [
-        "Carry sun protection.",
-        "Allow enough time for Mehrangarh Fort.",
-      ],
-    },
-    {
-      day: 5,
-      date: "2026-09-18",
-      city: "Udaipur",
-      morning: "Travel to Udaipur.",
-      afternoon: "Visit City Palace.",
-      evening: "Enjoy a sunset boat ride on Lake Pichola.",
-      meals: {
-        breakfast: "Hotel breakfast",
-        lunch: "Restaurant near City Palace",
-        dinner: "Lake-view restaurant",
-      },
-      transport: "Private cab",
-      hotel: "Lake-area hotel in Udaipur",
-      estimated_daily_cost: 9500,
-      tips: [
-        "Reserve the boat ride in advance.",
-      ],
-    },
-    {
-      day: 6,
-      date: "2026-09-19",
-      city: "Udaipur",
-      morning: "Explore Jagdish Temple and nearby streets.",
-      afternoon: "Free time for shopping and cafés.",
-      evening: "Departure from Udaipur.",
-      meals: {
-        breakfast: "Hotel breakfast",
-        lunch: "Local restaurant",
-        dinner: "As convenient before departure",
-      },
-      transport: "Airport transfer",
-      hotel: "Check-out",
-      estimated_daily_cost: 6500,
-      tips: [
-        "Keep departure documents easily accessible.",
+        "TEST DAY 3 TIP",
       ],
     },
   ],
 
   weather: {
-    overall_summary:
-      "Warm days with generally suitable conditions for sightseeing.",
+    overall_summary: "TEST WEATHER SUMMARY",
+
     cities: [
       {
-        city: "Jaipur",
-        temperature: "28°C",
-        conditions: "Sunny",
-        travel_advisory: "Stay hydrated during afternoon sightseeing.",
+        city: "TEST JAIPUR",
+        temperature: "99°C",
+        conditions: "TEST SUNNY",
+        travel_advisory: "TEST WEATHER ADVISORY",
       },
       {
-        city: "Jodhpur",
-        temperature: "29°C",
-        conditions: "Mostly sunny",
-        travel_advisory: "Use sun protection.",
+        city: "TEST JODHPUR",
+        temperature: "88°C",
+        conditions: "TEST CLOUDY",
+        travel_advisory: "TEST JODHPUR ADVISORY",
       },
       {
-        city: "Udaipur",
-        temperature: "27°C",
-        conditions: "Partly cloudy",
-        travel_advisory: "Evenings may feel cooler near the lake.",
+        city: "TEST UDAIPUR",
+        temperature: "77°C",
+        conditions: "TEST RAINY",
+        travel_advisory: "TEST UDAIPUR ADVISORY",
       },
     ],
   },
 
   transport: {
-    recommended_mode: "Private cab",
-    provider: "Local travel provider",
-    estimated_cost: "₹12,000",
+    recommended_mode: "TEST RECOMMENDED TRANSPORT",
+
+    provider: "TEST TRANSPORT PROVIDER",
+
+    estimated_cost: "₹9999",
+
     booking_link: "",
+
     alternative_options: [
       {
-        mode: "Train",
-        provider: "Indian Railways",
-        estimated_cost: "₹3,500",
+        mode: "TEST TRAIN",
+        provider: "TEST TRAIN PROVIDER",
+        estimated_cost: "₹1111",
         booking_link: "",
       },
       {
-        mode: "Bus",
-        provider: "Private bus operator",
-        estimated_cost: "₹2,800",
+        mode: "TEST BUS",
+        provider: "TEST BUS PROVIDER",
+        estimated_cost: "₹2222",
         booking_link: "",
       },
     ],
@@ -198,131 +169,130 @@ export const mockTravelPlan: TravelPlan = {
 
   accommodation: [
     {
-      city: "Jaipur",
-      hotel_name: "Jaipur Heritage Stay",
-      price_per_night: "₹3,500",
-      rating: "4.3/5",
+      city: "TEST JAIPUR",
+      hotel_name: "TEST JAIPUR HOTEL",
+      price_per_night: "₹9999",
+      rating: "9.9/10",
       booking_link: "",
-      why_recommended: "Central location and convenient access to attractions.",
+      why_recommended: "TEST JAIPUR HOTEL REASON",
     },
     {
-      city: "Jodhpur",
-      hotel_name: "Blue City Heritage Hotel",
-      price_per_night: "₹4,000",
-      rating: "4.4/5",
+      city: "TEST JODHPUR",
+      hotel_name: "TEST JODHPUR HOTEL",
+      price_per_night: "₹8888",
+      rating: "8.8/10",
       booking_link: "",
-      why_recommended: "Good location for exploring the old city.",
+      why_recommended: "TEST JODHPUR HOTEL REASON",
     },
     {
-      city: "Udaipur",
-      hotel_name: "Lake View Retreat",
-      price_per_night: "₹4,500",
-      rating: "4.5/5",
+      city: "TEST UDAIPUR",
+      hotel_name: "TEST UDAIPUR HOTEL",
+      price_per_night: "₹7777",
+      rating: "7.7/10",
       booking_link: "",
-      why_recommended: "Scenic location close to Lake Pichola.",
+      why_recommended: "TEST UDAIPUR HOTEL REASON",
     },
   ],
 
   restaurants: [
     {
-      city: "Jaipur",
+      city: "TEST JAIPUR",
       recommended: [
         {
-          name: "Rajasthani Kitchen",
-          cuisine: "Rajasthani",
-          price_level: "₹₹",
-          must_try: "Dal Baati Churma",
-        },
-        {
-          name: "Pink City Café",
-          cuisine: "Indian",
-          price_level: "₹₹",
-          must_try: "Local thali",
+          name: "TEST JAIPUR RESTAURANT",
+          cuisine: "TEST RAJASTHANI CUISINE",
+          price_level: "TEST ₹₹",
+          must_try: "TEST DAL BAATI",
         },
       ],
     },
     {
-      city: "Jodhpur",
+      city: "TEST JODHPUR",
       recommended: [
         {
-          name: "Marwari Table",
-          cuisine: "Marwari",
-          price_level: "₹₹",
-          must_try: "Makhaniya lassi and local thali",
+          name: "TEST JODHPUR RESTAURANT",
+          cuisine: "TEST MARWARI CUISINE",
+          price_level: "TEST ₹₹₹",
+          must_try: "TEST LASSI",
         },
       ],
     },
     {
-      city: "Udaipur",
+      city: "TEST UDAIPUR",
       recommended: [
         {
-          name: "Lake View Dining",
-          cuisine: "Indian",
-          price_level: "₹₹₹",
-          must_try: "Rajasthani specialities",
+          name: "TEST UDAIPUR RESTAURANT",
+          cuisine: "TEST INDIAN CUISINE",
+          price_level: "TEST ₹₹",
+          must_try: "TEST THALI",
         },
       ],
     },
   ],
 
   budget: {
-    total_budget: 50000,
-    estimated_cost: 44500,
-    remaining: 5500,
+    total_budget: 99999,
+
+    estimated_cost: 55555,
+
+    remaining: 44444,
+
     currency: "INR",
-    status: "Within budget",
+
+    status: "TEST WITHIN BUDGET",
+
     breakdown: {
-      transport: 12000,
-      accommodation: 15000,
-      food: 7500,
-      activities: 7000,
-      miscellaneous: 3000,
+      transport: 11111,
+      accommodation: 22222,
+      food: 3333,
+      activities: 4444,
+      miscellaneous: 5555,
     },
   },
 
   packing: {
     clothing: [
-      "Lightweight clothes",
-      "Comfortable walking clothes",
-      "Light jacket",
+      "TEST CLOTHING",
+      "TEST JACKET",
     ],
+
     footwear: [
-      "Comfortable walking shoes",
-      "Sandals",
+      "TEST SHOES",
+      "TEST SANDALS",
     ],
+
     electronics: [
-      "Phone charger",
-      "Power bank",
-      "Travel adapter",
+      "TEST PHONE",
+      "TEST POWER BANK",
     ],
+
     documents: [
-      "Government ID",
-      "Hotel confirmations",
-      "Travel tickets",
+      "TEST PASSPORT",
+      "TEST ID",
     ],
+
     toiletries: [
-      "Toothbrush",
-      "Toothpaste",
-      "Sunscreen",
+      "TEST TOOTHBRUSH",
+      "TEST SUNSCREEN",
     ],
+
     health: [
-      "Basic medicines",
-      "Personal medication",
+      "TEST MEDICINE",
     ],
+
     miscellaneous: [
-      "Water bottle",
-      "Small backpack",
-      "Sunglasses",
+      "TEST WATER BOTTLE",
+      "TEST BACKPACK",
     ],
   },
 
   important_notes: [
-    "Keep copies of important travel documents.",
-    "Carry sufficient drinking water during sightseeing.",
+    "TEST IMPORTANT NOTE 1",
+    "TEST IMPORTANT NOTE 2",
   ],
 
   limitations: [
-    "Prices are estimates and may change.",
-    "Availability should be confirmed before booking.",
+    "TEST LIMITATION 1",
+    "TEST LIMITATION 2",
   ],
 };
