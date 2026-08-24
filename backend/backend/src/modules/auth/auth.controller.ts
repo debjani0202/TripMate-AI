@@ -1,8 +1,18 @@
 import type { Request, Response } from "express";
-import { loginUser, registerUser } from "./auth.service.js";
+
+import {
+  loginUser,
+  registerUser,
+  getUserById,
+   updateUserProfile,
+} from "./auth.service.js";
+
 import type { AuthenticatedRequest } from "../../middleware/auth.middleware.js";
 
-export const register = async (req: Request, res: Response) => {
+export const register = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const { fullName, email, password } = req.body;
 
@@ -53,7 +63,10 @@ export const register = async (req: Request, res: Response) => {
   }
 };
 
-export const login = async (req: Request, res: Response) => {
+export const login = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const { email, password } = req.body;
 
@@ -93,15 +106,107 @@ export const login = async (req: Request, res: Response) => {
     });
   }
 };
-
 export const getMe = async (
   req: AuthenticatedRequest,
   res: Response,
 ) => {
-  return res.status(200).json({
-    success: true,
-    data: {
-      user: req.user,
-    },
-  });
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const user = await getUserById(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        user,
+      },
+    });
+  } catch (error) {
+    console.error("Get current user error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch user profile",
+    });
+  }
+};
+
+export const updateProfile = async (
+  req: AuthenticatedRequest,
+  res: Response,
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const {
+      fullName,
+      age,
+      phone,
+      location,
+    } = req.body;
+
+    // Basic validation
+    if (
+      fullName !== undefined &&
+      (!fullName || typeof fullName !== "string")
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Full name must be a valid string",
+      });
+    }
+
+    if (
+      age !== undefined &&
+      age !== null &&
+      (!Number.isInteger(age) || age < 1 || age > 120)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Age must be between 1 and 120",
+      });
+    }
+
+    const user = await updateUserProfile(
+      req.user.userId,
+      {
+        fullName,
+        age,
+        phone,
+        location,
+      },
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: {
+        user,
+      },
+    });
+  } catch (error) {
+    console.error("Update profile error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update profile",
+    });
+  }
 };

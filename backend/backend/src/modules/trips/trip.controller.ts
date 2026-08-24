@@ -1,10 +1,12 @@
 import type { Response } from "express";
+
 import type { AuthenticatedRequest } from "../../middleware/auth.middleware.js";
 
 import {
   createTrip,
   getMyTrips,
   getTripById,
+  saveGeneratedTrip,
   saveTrip,
   unsaveTrip,
 } from "./trip.service.js";
@@ -66,14 +68,17 @@ export const createTripController = async (
     }
 
     // Interests must be an array when provided
-    if (interests !== undefined && !Array.isArray(interests)) {
+    if (
+      interests !== undefined &&
+      !Array.isArray(interests)
+    ) {
       return res.status(400).json({
         success: false,
         message: "Interests must be an array",
       });
     }
 
-    // Convert dates from the request into JavaScript Date objects
+    // Convert dates from the request
     const parsedStartDate = new Date(startDate);
     const parsedEndDate = new Date(endDate);
 
@@ -84,7 +89,8 @@ export const createTripController = async (
     ) {
       return res.status(400).json({
         success: false,
-        message: "Start date or end date is invalid",
+        message:
+          "Start date or end date is invalid",
       });
     }
 
@@ -92,16 +98,21 @@ export const createTripController = async (
     if (parsedEndDate < parsedStartDate) {
       return res.status(400).json({
         success: false,
-        message: "End date cannot be before start date",
+        message:
+          "End date cannot be before start date",
       });
     }
 
     // Convert numeric values
     const parsedNumberOfDays = Number(numberOfDays);
-    const parsedNumberOfTravelers = Number(numberOfTravelers);
+    const parsedNumberOfTravelers = Number(
+      numberOfTravelers,
+    );
     const parsedBudget = Number(budget);
-    const parsedChildren = children === undefined ? 0 : Number(children);
-    const parsedSeniors = seniors === undefined ? 0 : Number(seniors);
+    const parsedChildren =
+      children === undefined ? 0 : Number(children);
+    const parsedSeniors =
+      seniors === undefined ? 0 : Number(seniors);
 
     // Check numeric values
     if (
@@ -110,7 +121,8 @@ export const createTripController = async (
     ) {
       return res.status(400).json({
         success: false,
-        message: "Number of days must be a positive integer",
+        message:
+          "Number of days must be a positive integer",
       });
     }
 
@@ -120,14 +132,19 @@ export const createTripController = async (
     ) {
       return res.status(400).json({
         success: false,
-        message: "Number of travelers must be a positive integer",
+        message:
+          "Number of travelers must be a positive integer",
       });
     }
 
-    if (!Number.isFinite(parsedBudget) || parsedBudget <= 0) {
+    if (
+      !Number.isFinite(parsedBudget) ||
+      parsedBudget <= 0
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Budget must be a positive number",
+        message:
+          "Budget must be a positive number",
       });
     }
 
@@ -137,7 +154,8 @@ export const createTripController = async (
     ) {
       return res.status(400).json({
         success: false,
-        message: "Children must be a non-negative integer",
+        message:
+          "Children must be a non-negative integer",
       });
     }
 
@@ -147,57 +165,65 @@ export const createTripController = async (
     ) {
       return res.status(400).json({
         success: false,
-        message: "Seniors must be a non-negative integer",
+        message:
+          "Seniors must be a non-negative integer",
       });
     }
 
     // Create the trip
-    const trip = await createTrip(req.user.userId, {
-      startLocation: String(startLocation).trim(),
-      destination: String(destination).trim(),
+    const trip = await createTrip(
+      req.user.userId,
+      {
+        startLocation: String(startLocation).trim(),
+        destination: String(destination).trim(),
+        startDate: parsedStartDate,
+        endDate: parsedEndDate,
+        numberOfDays: parsedNumberOfDays,
+        numberOfTravelers:
+          parsedNumberOfTravelers,
+        budget: parsedBudget,
+        currency: currency
+          ? String(currency).trim()
+          : "INR",
 
-      startDate: parsedStartDate,
-      endDate: parsedEndDate,
+        // Keep this field for the existing Trip structure
+        budgetRange: budgetRange
+          ? String(budgetRange).trim()
+          : String(parsedBudget),
 
-      numberOfDays: parsedNumberOfDays,
-      numberOfTravelers: parsedNumberOfTravelers,
+        travelStyle:
+          String(travelStyle).trim(),
 
-      budget: parsedBudget,
-      currency: currency
-        ? String(currency).trim()
-        : "INR",
+        transportMode: transportMode
+          ? String(transportMode).trim()
+          : undefined,
 
-      // Keep this field for the existing Trip structure.
-      // Later we can map the UI budget selection properly.
-      budgetRange: budgetRange
-        ? String(budgetRange).trim()
-        : String(parsedBudget),
+        hotelPreference:
+          String(hotelPreference).trim(),
 
-      travelStyle: String(travelStyle).trim(),
+        foodPreference:
+          String(foodPreference).trim(),
 
-      transportMode: transportMode
-        ? String(transportMode).trim()
-        : undefined,
+        notes: notes
+          ? String(notes).trim()
+          : undefined,
 
-      hotelPreference: String(hotelPreference).trim(),
-      foodPreference: String(foodPreference).trim(),
+        specialRequirements:
+          specialRequirements
+            ? String(
+                specialRequirements,
+              ).trim()
+            : undefined,
 
-      notes: notes
-        ? String(notes).trim()
-        : undefined,
+        children: parsedChildren,
+        seniors: parsedSeniors,
 
-      specialRequirements: specialRequirements
-        ? String(specialRequirements).trim()
-        : undefined,
+        accessibilityRequired:
+          accessibilityRequired === true,
 
-      children: parsedChildren,
-      seniors: parsedSeniors,
-
-      accessibilityRequired:
-        accessibilityRequired === true,
-
-      interests,
-    });
+        interests,
+      },
+    );
 
     return res.status(201).json({
       success: true,
@@ -207,7 +233,10 @@ export const createTripController = async (
       },
     });
   } catch (error) {
-    console.error("Create trip error:", error);
+    console.error(
+      "Create trip error:",
+      error,
+    );
 
     return res.status(500).json({
       success: false,
@@ -215,6 +244,308 @@ export const createTripController = async (
     });
   }
 };
+
+// Save an already-generated AI travel plan
+export const saveGeneratedTripController =
+  async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ) => {
+    try {
+      // Check if the user is logged in
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Authentication required",
+        });
+      }
+
+      const {
+        startLocation,
+        destination,
+        startDate,
+        endDate,
+        numberOfDays,
+        numberOfTravelers,
+        budget,
+        currency,
+        budgetRange,
+        travelStyle,
+        transportMode,
+        hotelPreference,
+        foodPreference,
+        notes,
+        specialRequirements,
+        children,
+        seniors,
+        accessibilityRequired,
+        interests,
+        travelPlan,
+      } = req.body;
+
+      // Check required trip data
+      if (
+        !startLocation ||
+        !destination ||
+        !startDate ||
+        !endDate ||
+        numberOfDays === undefined ||
+        numberOfTravelers === undefined ||
+        budget === undefined ||
+        !currency ||
+        !budgetRange ||
+        !travelStyle ||
+        !hotelPreference ||
+        !foodPreference
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Required trip information is missing",
+        });
+      }
+
+      // The generated AI plan is required
+      if (
+        !travelPlan ||
+        typeof travelPlan !== "object"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Generated travel plan is required",
+        });
+      }
+
+      // Interests must be an array
+      if (
+        interests !== undefined &&
+        !Array.isArray(interests)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Interests must be an array",
+        });
+      }
+
+      // Convert dates
+      const parsedStartDate = new Date(
+        startDate,
+      );
+
+      const parsedEndDate = new Date(
+        endDate,
+      );
+
+      // Validate dates
+      if (
+        Number.isNaN(
+          parsedStartDate.getTime(),
+        ) ||
+        Number.isNaN(
+          parsedEndDate.getTime(),
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Start date or end date is invalid",
+        });
+      }
+
+      // End date cannot be before start date
+      if (parsedEndDate < parsedStartDate) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "End date cannot be before start date",
+        });
+      }
+
+      // Convert numeric values
+      const parsedNumberOfDays = Number(
+        numberOfDays,
+      );
+
+      const parsedNumberOfTravelers =
+        Number(numberOfTravelers);
+
+      const parsedBudget = Number(budget);
+
+      const parsedChildren =
+        children === undefined
+          ? 0
+          : Number(children);
+
+      const parsedSeniors =
+        seniors === undefined
+          ? 0
+          : Number(seniors);
+
+      // Validate number of days
+      if (
+        !Number.isInteger(
+          parsedNumberOfDays,
+        ) ||
+        parsedNumberOfDays <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Number of days must be a positive integer",
+        });
+      }
+
+      // Validate number of travelers
+      if (
+        !Number.isInteger(
+          parsedNumberOfTravelers,
+        ) ||
+        parsedNumberOfTravelers <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Number of travelers must be a positive integer",
+        });
+      }
+
+      // Validate budget
+      if (
+        !Number.isFinite(parsedBudget) ||
+        parsedBudget <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Budget must be a positive number",
+        });
+      }
+
+      // Validate children
+      if (
+        !Number.isInteger(
+          parsedChildren,
+        ) ||
+        parsedChildren < 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Children must be a non-negative integer",
+        });
+      }
+
+      // Validate seniors
+      if (
+        !Number.isInteger(
+          parsedSeniors,
+        ) ||
+        parsedSeniors < 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Seniors must be a non-negative integer",
+        });
+      }
+
+      // Save the generated plan under the logged-in user
+      const trip = await saveGeneratedTrip(
+        req.user.userId,
+        {
+          startLocation:
+            String(startLocation).trim(),
+
+          destination:
+            String(destination).trim(),
+
+          startDate:
+            parsedStartDate.toISOString(),
+
+          endDate:
+            parsedEndDate.toISOString(),
+
+          numberOfDays:
+            parsedNumberOfDays,
+
+          numberOfTravelers:
+            parsedNumberOfTravelers,
+
+          budget:
+            parsedBudget,
+
+          currency:
+            String(currency).trim(),
+
+          budgetRange:
+            String(budgetRange).trim(),
+
+          travelStyle:
+            String(travelStyle).trim(),
+
+          transportMode:
+            String(transportMode ?? "").trim(),
+
+          hotelPreference:
+            String(
+              hotelPreference,
+            ).trim(),
+
+          foodPreference:
+            String(
+              foodPreference,
+            ).trim(),
+
+          notes: notes
+            ? String(notes).trim()
+            : undefined,
+
+          specialRequirements:
+            specialRequirements
+              ? String(
+                  specialRequirements,
+                ).trim()
+              : undefined,
+
+          children:
+            parsedChildren,
+
+          seniors:
+            parsedSeniors,
+
+          accessibilityRequired:
+            accessibilityRequired === true,
+
+          interests,
+
+          travelPlan,
+        },
+      );
+
+      return res.status(201).json({
+        success: true,
+        message:
+          "Generated trip saved successfully",
+        data: {
+          trip,
+        },
+      });
+    } catch (error) {
+      console.error(
+        "Save generated trip error:",
+        error,
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Failed to save generated trip",
+      });
+    }
+  };
 
 // Get all saved trips
 export const getMyTripsController = async (
@@ -230,17 +561,23 @@ export const getMyTripsController = async (
       });
     }
 
-    const trips = await getMyTrips(req.user.userId);
+    const trips = await getMyTrips(
+      req.user.userId,
+    );
 
     return res.status(200).json({
       success: true,
-      message: "Saved trips fetched successfully",
+      message:
+        "Saved trips fetched successfully",
       data: {
         trips,
       },
     });
   } catch (error) {
-    console.error("Get my trips error:", error);
+    console.error(
+      "Get my trips error:",
+      error,
+    );
 
     return res.status(500).json({
       success: false,
@@ -264,10 +601,15 @@ export const getTripByIdController = async (
     }
 
     // Get trip ID from URL
-    const tripId = Number(req.params.tripId);
+    const tripId = Number(
+      req.params.tripId,
+    );
 
     // Validate trip ID
-    if (!Number.isInteger(tripId) || tripId <= 0) {
+    if (
+      !Number.isInteger(tripId) ||
+      tripId <= 0
+    ) {
       return res.status(400).json({
         success: false,
         message: "Invalid trip ID",
@@ -295,7 +637,10 @@ export const getTripByIdController = async (
       },
     });
   } catch (error) {
-    console.error("Get trip by ID error:", error);
+    console.error(
+      "Get trip by ID error:",
+      error,
+    );
 
     return res.status(500).json({
       success: false,
@@ -304,7 +649,7 @@ export const getTripByIdController = async (
   }
 };
 
-// Save a trip
+// Save an existing trip
 export const saveTripController = async (
   req: AuthenticatedRequest,
   res: Response,
@@ -318,10 +663,15 @@ export const saveTripController = async (
       });
     }
 
-    const tripId = Number(req.params.tripId);
+    const tripId = Number(
+      req.params.tripId,
+    );
 
     // Validate trip ID
-    if (!Number.isInteger(tripId) || tripId <= 0) {
+    if (
+      !Number.isInteger(tripId) ||
+      tripId <= 0
+    ) {
       return res.status(400).json({
         success: false,
         message: "Invalid trip ID",
@@ -349,7 +699,10 @@ export const saveTripController = async (
       },
     });
   } catch (error) {
-    console.error("Save trip error:", error);
+    console.error(
+      "Save trip error:",
+      error,
+    );
 
     return res.status(500).json({
       success: false,
@@ -359,55 +712,67 @@ export const saveTripController = async (
 };
 
 // Remove a trip from saved trips
-export const unsaveTripController = async (
-  req: AuthenticatedRequest,
-  res: Response,
-) => {
-  try {
-    // Check if the user is logged in
-    if (!req.user) {
-      return res.status(401).json({
+export const unsaveTripController =
+  async (
+    req: AuthenticatedRequest,
+    res: Response,
+  ) => {
+    try {
+      // Check if the user is logged in
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Authentication required",
+        });
+      }
+
+      const tripId = Number(
+        req.params.tripId,
+      );
+
+      // Validate trip ID
+      if (
+        !Number.isInteger(tripId) ||
+        tripId <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid trip ID",
+        });
+      }
+
+      // Remove the trip from saved trips
+      const trip = await unsaveTrip(
+        tripId,
+        req.user.userId,
+      );
+
+      if (!trip) {
+        return res.status(404).json({
+          success: false,
+          message: "Trip not found",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "Trip removed from saved trips",
+        data: {
+          trip,
+        },
+      });
+    } catch (error) {
+      console.error(
+        "Unsave trip error:",
+        error,
+      );
+
+      return res.status(500).json({
         success: false,
-        message: "Authentication required",
+        message:
+          "Failed to remove trip from saved trips",
       });
     }
-
-    const tripId = Number(req.params.tripId);
-
-    // Validate trip ID
-    if (!Number.isInteger(tripId) || tripId <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid trip ID",
-      });
-    }
-
-    // Unsave only if the trip belongs to this user
-    const trip = await unsaveTrip(
-      tripId,
-      req.user.userId,
-    );
-
-    if (!trip) {
-      return res.status(404).json({
-        success: false,
-        message: "Trip not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Trip removed from saved trips",
-      data: {
-        trip,
-      },
-    });
-  } catch (error) {
-    console.error("Unsave trip error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Failed to remove trip from saved trips",
-    });
-  }
-};
+  };

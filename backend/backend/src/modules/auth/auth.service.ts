@@ -19,6 +19,7 @@ if (!JWT_SECRET) {
   throw new Error("JWT_SECRET is not defined");
 }
 
+// Register a new user
 export const registerUser = async (input: RegisterInput) => {
   const { fullName, email, password } = input;
 
@@ -58,6 +59,7 @@ export const registerUser = async (input: RegisterInput) => {
   return user;
 };
 
+// Login an existing user
 export const loginUser = async (input: LoginInput) => {
   const { email, password } = input;
 
@@ -107,4 +109,71 @@ export const loginUser = async (input: LoginInput) => {
       createdAt: user.createdAt,
     },
   };
+};
+
+// Get profile of the authenticated user
+export const getUserById = async (userId: number) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      role: true,
+      createdAt: true,
+    },
+  });
+
+  return user;
+};
+
+interface UpdateProfileInput {
+  fullName?: string;
+  age?: number | null;
+  phone?: string | null;
+  location?: string | null;
+}
+
+// Update profile of the authenticated user
+export const updateUserProfile = async (
+  userId: number,
+  input: UpdateProfileInput,
+) => {
+  const user = await prisma.user.update({
+    where: {
+      id: userId,
+    },
+    data: {
+      ...(input.fullName !== undefined && {
+        fullName: input.fullName.trim(),
+      }),
+
+      ...(input.age !== undefined && {
+        age: input.age,
+      }),
+
+      ...(input.phone !== undefined && {
+        phone: input.phone?.trim() || null,
+      }),
+
+      ...(input.location !== undefined && {
+        location: input.location?.trim() || null,
+      }),
+    },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      role: true,
+      createdAt: true,
+      age: true,
+      phone: true,
+      location: true,
+      profilePhoto: true,
+    },
+  });
+
+  return user;
 };

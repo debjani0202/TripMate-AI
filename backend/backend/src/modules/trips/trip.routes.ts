@@ -1,10 +1,12 @@
 import { Router } from "express";
+
 import { authenticate } from "../../middleware/auth.middleware.js";
 
 import {
   createTripController,
   getMyTripsController,
   getTripByIdController,
+  saveGeneratedTripController,
   saveTripController,
   unsaveTripController,
 } from "./trip.controller.js";
@@ -12,15 +14,34 @@ import {
 const router = Router();
 
 // Create a new trip
-router.post("/", authenticate, createTripController);
+router.post(
+  "/",
+  authenticate,
+  createTripController,
+);
+
+// Save a complete AI-generated trip
+router.post(
+  "/save-generated",
+  authenticate,
+  saveGeneratedTripController,
+);
 
 // Get all saved trips
-router.get("/", authenticate, getMyTripsController);
+router.get(
+  "/",
+  authenticate,
+  getMyTripsController,
+);
 
 // Get one trip by ID
-router.get("/:tripId", authenticate, getTripByIdController);
+router.get(
+  "/:tripId",
+  authenticate,
+  getTripByIdController,
+);
 
-// Save a trip
+// Save an existing trip
 router.post(
   "/:tripId/save",
   authenticate,

@@ -1,8 +1,8 @@
 import prisma from "../../config/prisma.js";
 
 import {
-  mockAIProvider,
-} from "../../providers/ai/mock.provider.js";
+  fastAPIProvider,
+} from "../../providers/ai/fastapi.provider.js";
 
 import type {
   GenerateItineraryInput,
@@ -96,7 +96,7 @@ export const prepareItineraryRequest = async (
   return itineraryRequest;
 };
 
-// Generate an itinerary using the local AI provider
+// Generate an itinerary using the FastAPI AI provider
 export const generateItinerary = async (
   userId: number,
   input: GenerateItineraryInput,
@@ -113,9 +113,9 @@ export const generateItinerary = async (
     return null;
   }
 
-  // Generate the itinerary using the local AI provider
+  // Generate the itinerary using the FastAPI AgentBackend
   const aiResponse =
-    await mockAIProvider.generateItinerary(
+    await fastAPIProvider.generateItinerary(
       itineraryRequest,
     );
 
