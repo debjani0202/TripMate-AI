@@ -98,3 +98,21 @@ export async function updateProfile(
 
   return response.data.data.user;
 }
+
+export async function updateProfilePhoto(
+  photo: File,
+): Promise<AuthUser> {
+  const formData = new FormData();
+
+  formData.append("photo", photo);
+
+  const response = await apiClient.patch<{
+    success: boolean;
+    message: string;
+    data: {
+      user: AuthUser;
+    };
+  }>("/auth/profile/photo", formData);
+
+  return response.data.data.user;
+}

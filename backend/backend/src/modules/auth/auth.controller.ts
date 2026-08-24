@@ -5,6 +5,7 @@ import {
   registerUser,
   getUserById,
    updateUserProfile,
+    updateProfilePhoto,
 } from "./auth.service.js";
 
 import type { AuthenticatedRequest } from "../../middleware/auth.middleware.js";
@@ -207,6 +208,47 @@ export const updateProfile = async (
     return res.status(500).json({
       success: false,
       message: "Failed to update profile",
+    });
+  }
+};
+
+export const updateProfilePhotoController = async (
+  req: AuthenticatedRequest,
+  res: Response,
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Profile photo is required",
+      });
+    }
+
+    const user = await updateProfilePhoto(
+      req.user.userId,
+      req.file,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile photo updated successfully",
+      data: {
+        user,
+      },
+    });
+  } catch (error) {
+    console.error("Update profile photo error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update profile photo",
     });
   }
 };

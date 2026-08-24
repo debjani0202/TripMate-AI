@@ -20,6 +20,7 @@ import planTripBg from "@/assets/images/plan-trip/plan-trip-bg.jpeg";
 import {
   getCurrentUser,
   updateProfile,
+  updateProfilePhoto,
   type AuthUser,
   type UpdateProfileRequest,
 } from "@/services/api/auth.service";
@@ -32,6 +33,10 @@ export function ProfilePage() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoInputKey, setPhotoInputKey] = useState(0);
 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -86,6 +91,7 @@ export function ProfilePage() {
 
     setSuccessMessage(null);
     setErrorMessage(null);
+    setPhotoError(null);
     setIsEditing(true);
   };
 
@@ -103,6 +109,7 @@ export function ProfilePage() {
 
     setSuccessMessage(null);
     setErrorMessage(null);
+    setPhotoError(null);
     setIsEditing(false);
   };
 
@@ -175,6 +182,67 @@ export function ProfilePage() {
       );
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleProfilePhotoChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setPhotoError(null);
+    setSuccessMessage(null);
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      setPhotoError(
+        "Only JPG, PNG, and WEBP images are allowed.",
+      );
+
+      setPhotoInputKey((previous) => previous + 1);
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError(
+        "Profile photo must be smaller than 5 MB.",
+      );
+
+      setPhotoInputKey((previous) => previous + 1);
+      return;
+    }
+
+    try {
+      setIsUploadingPhoto(true);
+
+      const updatedUser = await updateProfilePhoto(file);
+
+      setUser(updatedUser);
+
+      setSuccessMessage(
+        "Profile photo updated successfully.",
+      );
+    } catch (error) {
+      console.error(
+        "Failed to upload profile photo:",
+        error,
+      );
+
+      setPhotoError(
+        "Unable to upload profile photo. Please try again.",
+      );
+    } finally {
+      setIsUploadingPhoto(false);
+      setPhotoInputKey((previous) => previous + 1);
     }
   };
 
@@ -259,10 +327,60 @@ export function ProfilePage() {
               </svg>
             </div>
 
-            {/* Profile icon */}
-            <div className="relative mx-auto flex h-28 w-28 items-center justify-center rounded-full border-4 border-white bg-orange-50 text-[#f56b16] shadow-[0_8px_25px_rgba(52,45,34,0.16)] sm:h-32 sm:w-32">
-              <UserRound className="h-14 w-14 sm:h-16 sm:w-16" />
+            {/* Profile photo */}
+            <div className="relative mx-auto h-28 w-28 sm:h-32 sm:w-32">
+              <label
+                htmlFor="profile-photo"
+                className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-full border-4 border-white bg-orange-50 text-[#f56b16] shadow-[0_8px_25px_rgba(52,45,34,0.16)] ${
+                  isUploadingPhoto
+                    ? "cursor-wait opacity-70"
+                    : "cursor-pointer"
+                }`}
+              >
+                {user?.profilePhoto ? (
+                  <img
+                    src={user.profilePhoto}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <UserRound className="h-14 w-14 sm:h-16 sm:w-16" />
+                )}
+
+                {isUploadingPhoto && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                )}
+              </label>
+
+              <input
+                key={photoInputKey}
+                id="profile-photo"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleProfilePhotoChange}
+                disabled={isUploadingPhoto}
+              />
+
+              <label
+                htmlFor="profile-photo"
+                className={`absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-[#f56b16] text-white shadow-md transition ${
+                  isUploadingPhoto
+                    ? "cursor-wait opacity-60"
+                    : "cursor-pointer hover:bg-[#e95f0d]"
+                }`}
+              >
+                <Pencil className="h-4 w-4" />
+              </label>
             </div>
+
+            {photoError && (
+              <div className="mx-auto mt-3 max-w-sm rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-center text-xs text-red-700">
+                {photoError}
+              </div>
+            )}
 
             <div className="mt-5">
               <h1 className="font-display text-2xl font-bold tracking-tight text-[#17233d] sm:text-[26px]">
@@ -418,7 +536,7 @@ export function ProfilePage() {
                   {/* Email */}
                   <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-[#f26b16]">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-[#f56b16]">
                         <Mail className="h-4 w-4" />
                       </div>
 
@@ -504,7 +622,7 @@ export function ProfilePage() {
 
                   {/* Role */}
                   <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-3 sm:col-span-2">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-[#f26b16]">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-[#f26b21]">
                       <UserRound className="h-4 w-4" />
                     </div>
 

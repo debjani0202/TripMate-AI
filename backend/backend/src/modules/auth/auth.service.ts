@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import prisma from "../../config/prisma.js";
+import { uploadProfilePhotoToCloudinary } from "./profile-photo.service.js";
 
 interface RegisterInput {
   fullName: string;
@@ -161,6 +162,39 @@ export const updateUserProfile = async (
       ...(input.location !== undefined && {
         location: input.location?.trim() || null,
       }),
+    },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      role: true,
+      createdAt: true,
+      age: true,
+      phone: true,
+      location: true,
+      profilePhoto: true,
+    },
+  });
+
+  return user;
+};
+
+
+export const updateProfilePhoto = async (
+  userId: number,
+  file: Express.Multer.File,
+) => {
+  const photoUrl = await uploadProfilePhotoToCloudinary(
+    file,
+    userId,
+  );
+
+  const user = await prisma.user.update({
+    where: {
+      id: userId,
+    },
+    data: {
+      profilePhoto: photoUrl,
     },
     select: {
       id: true,
