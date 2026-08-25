@@ -66,7 +66,6 @@ export const loginUser = async (input: LoginInput) => {
 
   const normalizedEmail = email.trim().toLowerCase();
 
-  // Find user
   const user = await prisma.user.findUnique({
     where: {
       email: normalizedEmail,
@@ -77,7 +76,6 @@ export const loginUser = async (input: LoginInput) => {
     throw new Error("Invalid email or password");
   }
 
-  // Compare password with hashed password
   const passwordMatches = await bcrypt.compare(
     password,
     user.password,
@@ -87,7 +85,6 @@ export const loginUser = async (input: LoginInput) => {
     throw new Error("Invalid email or password");
   }
 
-  // Generate JWT
   const token = jwt.sign(
     {
       userId: user.id,
@@ -108,6 +105,10 @@ export const loginUser = async (input: LoginInput) => {
       email: user.email,
       role: user.role,
       createdAt: user.createdAt,
+      age: user.age,
+      phone: user.phone,
+      location: user.location,
+      profilePhoto: user.profilePhoto,
     },
   };
 };
@@ -124,6 +125,10 @@ export const getUserById = async (userId: number) => {
       email: true,
       role: true,
       createdAt: true,
+      age: true,
+      phone: true,
+      location: true,
+      profilePhoto: true,
     },
   });
 
