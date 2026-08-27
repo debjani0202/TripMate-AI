@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 
 import { Link, useParams, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AgentProgress } from "@/components/trip/AgentProgress";
 import type { AgentProgressItem } from "@/components/trip/AgentProgress";
@@ -36,7 +36,6 @@ import type {
   TravelPlanOutput,
 } from "@/services/api/itinerary.service";
 
-let generationInProgress = false;
 
 export function TripGenerationPage() {
   const { tripId } = useParams();
@@ -155,8 +154,224 @@ export function TripGenerationPage() {
   // Run itinerary generation
   // --------------------------------------------------
 
+  const generationInProgressRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const initialAgentStatuses = (): Record<
+    string,
+    AgentProgressItem["status"]
+  > => ({
+    research: "waiting",
+    weather: "waiting",
+    transport: "waiting",
+    accommodation: "waiting",
+    restaurants: "waiting",
+    budget: "waiting",
+    packing: "waiting",
+    planner: "waiting",
+  });
+
+  const getAgentKey = (
+    value: unknown,
+  ): keyof typeof agentStatuses | null => {
+    if (!value) {
+      return null;
+    }
+
+    const name = String(value).trim().toLowerCase();
+
+    // If the backend already sends the frontend key, use it directly.
+    const directKeyMap: Record<
+      string,
+      keyof typeof agentStatuses
+    > = {
+      research: "research",
+      weather: "weather",
+      transport: "transport",
+      accommodation: "accommodation",
+      restaurants: "restaurants",
+      restaurant: "restaurants",
+      budget: "budget",
+      packing: "packing",
+      planner: "planner",
+      "final planner": "planner",
+    };
+
+    if (directKeyMap[name]) {
+      return directKeyMap[name];
+    }
+
+    // These are the actual CrewAI agent roles used by the backend.
+    if (name === "research agent") {
+      return "research";
+    }
+
+    if (name === "weather agent") {
+      return "weather";
+    }
+
+    if (name === "route transport agent") {
+      return "transport";
+    }
+
+    if (name === "accommodation agent") {
+      return "accommodation";
+    }
+
+    if (name === "restaurants agent") {
+      return "restaurants";
+    }
+
+    if (name === "travel budget analyst") {
+      return "budget";
+    }
+
+    if (name === "smart packing assistant") {
+      return "packing";
+    }
+
+    if (name === "ai travel planner") {
+      return "planner";
+    }
+
+    // Task-name fallbacks. Keep Research LAST because other tasks
+    // can contain the words "research" in their descriptions/prompts.
+    if (
+      name.includes("expected weather conditions") ||
+      name.includes("weather conditions") ||
+      name.includes("weather agent") ||
+      name.includes("weather")
+    ) {
+      return "weather";
+    }
+
+    if (
+      name.includes("route transport") ||
+      name.includes("transportation options") ||
+      name.includes("transportation") ||
+      name.includes("transport agent") ||
+      name.includes("transport")
+    ) {
+      return "transport";
+    }
+
+    if (
+      name.includes("recommend accommodations") ||
+      name.includes("accommodation") ||
+      name.includes("hotel information") ||
+      name.includes("hotel")
+    ) {
+      return "accommodation";
+    }
+
+    if (
+      name.includes("restaurant recommendations") ||
+      name.includes("recommended restaurants") ||
+      name.includes("restaurants") ||
+      name.includes("dining")
+    ) {
+      return "restaurants";
+    }
+
+    if (
+      (name.includes("calculate") && name.includes("cost")) ||
+      name.includes("estimated costs") ||
+      name.includes("budget") ||
+      name.includes("budget agent")
+    ) {
+      return "budget";
+    }
+
+    if (
+      name.includes("packing list") ||
+      name.includes("packing") ||
+      name.includes("packing agent")
+    ) {
+      return "packing";
+    }
+
+    if (
+      name.includes("final planner") ||
+      name.includes("final travel plan") ||
+      name.includes("putting everything together") ||
+      name.includes("final planning")
+    ) {
+      return "planner";
+    }
+
+    if (
+      name.includes("research travel information") ||
+      name.includes("research the destination") ||
+      name.includes("research only the top") ||
+      name.includes("research agent")
+    ) {
+      return "research";
+    }
+
+    return null;
+  };
+
+  const getEventTaskName = (event: any): string => {
+    const directValues = [
+      event?.agent_role,
+      event?.agent_name,
+      event?.role,
+      event?.task_name,
+      event?.task,
+      event?.name,
+    ];
+
+    for (const value of directValues) {
+      if (typeof value === "string" && value.trim()) {
+        return value;
+      }
+    }
+
+    if (event?.agent && typeof event.agent === "object") {
+      return String(
+        event.agent.role ??
+          event.agent.name ??
+          event.agent.agent_role ??
+          "",
+      );
+    }
+
+    if (typeof event?.agent === "string") {
+      return event.agent;
+    }
+
+    return "";
+  };
+
+  const updateAgentStatus = (
+    taskName: string,
+    status: AgentProgressItem["status"],
+  ) => {
+    const taskKey = getAgentKey(taskName);
+
+    console.log(
+      `[SmartTrip SSE] ${status.toUpperCase()}:`,
+      taskName,
+      "->",
+      taskKey,
+    );
+
+    if (!taskKey) {
+      console.warn(
+        "[SmartTrip SSE] Could not map backend task/agent to UI agent:",
+        taskName,
+      );
+      return;
+    }
+
+    setAgentStatuses((current) => ({
+      ...current,
+      [taskKey]: status,
+    }));
+  };
+
   const runGeneration = async () => {
-    if (generationInProgress) {
+    if (generationInProgressRef.current) {
       return;
     }
 
@@ -170,124 +385,231 @@ export function TripGenerationPage() {
 
     if (tripId === "new") {
       const stateRequest = location.state?.travelRequest;
-      const cachedRequest = sessionStorage.getItem("smarttrip_latest_request");
+      const cachedRequest = sessionStorage.getItem(
+        "smarttrip_latest_request",
+      );
+
       if (stateRequest) {
         request = stateRequest;
       } else if (cachedRequest) {
         try {
-          request = JSON.parse(cachedRequest);
-        } catch (e) {
-          console.error("Failed to parse cached request:", e);
+          request = JSON.parse(cachedRequest) as TravelRequest;
+        } catch (parseError) {
+          console.error(
+            "Failed to parse cached travel request:",
+            parseError,
+          );
         }
       }
     }
 
     if (!request) {
-      setError("Travel request parameters not found.");
+      setError("Travel request is missing.");
       setIsGenerating(false);
       return;
     }
 
-    generationInProgress = true;
+    generationInProgressRef.current = true;
 
-    // Keep the request available for Wishlist after generation
+    // Cancel any old stream before starting a new generation.
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setTravelRequest(request);
-
     setIsGenerating(true);
     setTravelPlan(null);
     setError(null);
-
-    // Reset workflow
-    setAgentStatuses({
-      research: "waiting",
-      weather: "waiting",
-      transport: "waiting",
-      accommodation: "waiting",
-      restaurants: "waiting",
-      budget: "waiting",
-      packing: "waiting",
-      planner: "waiting",
-    });
+    setAgentStatuses(initialAgentStatuses());
 
     try {
-      // --------------------------------------------------
-      // Actual direct backend generation via SSE
-      // --------------------------------------------------
-      const response = await fetch("http://127.0.0.1:8000/travel/plan", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        "http://127.0.0.1:8000/travel/plan/stream",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "text/event-stream",
+            "Cache-Control": "no-cache",
+          },
+          body: JSON.stringify(request),
+          signal: controller.signal,
         },
-        body: JSON.stringify(request),
-      });
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error ${response.status}`);
       }
 
+      const contentType = response.headers.get("content-type") ?? "";
+
+      if (!contentType.includes("text/event-stream")) {
+        console.warn(
+          "[SmartTrip SSE] Backend did not return text/event-stream:",
+          contentType,
+        );
+      }
+
       const reader = response.body?.getReader();
+
       if (!reader) {
         throw new Error("Response body is not readable");
       }
 
       const decoder = new TextDecoder();
       let buffer = "";
+      let receivedFinalResult = false;
+
+      const processSseLine = (line: string) => {
+        const trimmedLine = line.trim();
+
+        if (!trimmedLine || !trimmedLine.startsWith("data:")) {
+          return;
+        }
+
+        const dataStr = trimmedLine.slice(5).trim();
+
+        if (!dataStr) {
+          return;
+        }
+
+        let event: any;
+
+        try {
+          event = JSON.parse(dataStr);
+        } catch (parseError) {
+          console.error(
+            "[SmartTrip SSE] Failed to parse event:",
+            dataStr,
+            parseError,
+          );
+          return;
+        }
+
+        console.log("[SmartTrip SSE EVENT]", event);
+
+        // Support both `event` and `type` so the frontend is tolerant
+        // of the two event formats already used during development.
+        const eventType = event?.event ?? event?.type;
+        const taskName = getEventTaskName(event);
+
+        switch (eventType) {
+          case "task_started":
+          case "agent_started": {
+            updateAgentStatus(taskName, "running");
+            break;
+          }
+
+          case "task_completed":
+          case "agent_completed": {
+            updateAgentStatus(taskName, "completed");
+            break;
+          }
+
+          case "task_failed":
+          case "agent_failed": {
+            updateAgentStatus(taskName, "failed");
+
+            throw new Error(
+              event?.error ??
+                event?.message ??
+                event?.detail ??
+                "CrewAI task failed",
+            );
+          }
+
+          case "final_result": {
+            receivedFinalResult = true;
+
+            console.log(
+              "[SmartTrip SSE] FINAL TRAVEL PLAN RECEIVED:",
+              event?.travel_plan,
+            );
+
+            if (!event?.travel_plan) {
+              throw new Error(
+                "Backend returned final_result without a travel plan.",
+              );
+            }
+
+            setTravelPlan(event.travel_plan as TravelPlanOutput);
+            setIsGenerating(false);
+            break;
+          }
+
+          case "error": {
+            throw new Error(
+              event?.message ??
+                event?.detail ??
+                event?.error ??
+                "Generation failed",
+            );
+          }
+
+          default:
+            console.debug(
+              "[SmartTrip SSE] Ignoring unknown event:",
+              event,
+            );
+        }
+      };
 
       while (true) {
         const { value, done } = await reader.read();
-        if (done) break;
+
+        if (done) {
+          break;
+        }
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
+
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() ?? "";
 
         for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const dataStr = line.slice(6).trim();
-            if (!dataStr) continue;
-
-            const event = JSON.parse(dataStr);
-
-            if (event.type === "task_started") {
-              const taskKey = event.task;
-              setAgentStatuses((current) => ({
-                ...current,
-                [taskKey]: "running",
-              }));
-            } else if (event.type === "task_completed") {
-              const taskKey = event.task;
-              setAgentStatuses((current) => ({
-                ...current,
-                [taskKey]: "completed",
-              }));
-            } else if (event.type === "task_failed") {
-              const taskKey = event.task;
-              setAgentStatuses((current) => ({
-                ...current,
-                [taskKey]: "failed",
-              }));
-            } else if (event.type === "final_result") {
-              setTravelPlan(event.travel_plan);
-              setIsGenerating(false);
-            } else if (event.type === "error") {
-              throw new Error(event.detail || "Generation failed");
-            }
-          }
+          processSseLine(line);
         }
       }
+
+      // Process any final complete event that arrived without a trailing
+      // newline, then make sure the backend actually finished normally.
+      buffer += decoder.decode();
+
+      if (buffer.trim()) {
+        processSseLine(buffer);
+      }
+
+      if (!receivedFinalResult) {
+        throw new Error(
+          "Generation stream ended before the final travel plan was received.",
+        );
+      }
     } catch (generationError) {
+      if (
+        generationError instanceof DOMException &&
+        generationError.name === "AbortError"
+      ) {
+        return;
+      }
+
       console.error(
         "Itinerary generation failed:",
         generationError,
       );
 
       setError(
-        "Unable to generate your itinerary. Please try again.",
+        generationError instanceof Error
+          ? generationError.message
+          : "Unable to generate your itinerary. Please try again.",
       );
 
       setIsGenerating(false);
     } finally {
-      generationInProgress = false;
+      generationInProgressRef.current = false;
+
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
     }
   };
 
@@ -295,9 +617,22 @@ export function TripGenerationPage() {
   // Generate automatically when page opens
   // --------------------------------------------------
 
+
+
+  // --------------------------------------------------
+  // Generate automatically when page opens
+  // --------------------------------------------------
+
   useEffect(() => {
-    runGeneration();
-  }, [tripId]);
+    void runGeneration();
+
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+    // This effect intentionally runs once when the generation page mounts.
+    // runGeneration itself prevents duplicate concurrent executions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // --------------------------------------------------
   // Download
@@ -374,10 +709,64 @@ export function TripGenerationPage() {
   };
 
   // --------------------------------------------------
+  // Error state
+  // --------------------------------------------------
+
+  if (error) {
+    return (
+      <main className="min-h-screen bg-[#f7f5f0] px-3 py-6 text-foreground dark:bg-[#111318] sm:px-5 lg:px-6">
+        <div className="mx-auto max-w-2xl">
+
+          <div className="rounded-2xl border border-border bg-white p-6 text-center shadow-sm dark:bg-[#191c22]">
+
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500">
+              <RefreshCw className="h-5 w-5" />
+            </div>
+
+            <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-accent">
+              SmartTrip AI
+            </p>
+
+            <h1 className="mt-1 font-display text-xl font-semibold text-foreground">
+              We couldn't generate your trip
+            </h1>
+
+            <p className="mt-2 text-sm text-muted-foreground">
+              {error ?? "Something went wrong while preparing your itinerary."}
+            </p>
+
+            <div className="mt-5 flex items-center justify-center gap-2">
+
+              <Link
+                to="/plan-trip"
+                className="rounded-xl border border-border bg-white px-4 py-2 text-xs font-semibold text-foreground transition hover:bg-secondary"
+              >
+                Back to Plan Trip
+              </Link>
+
+              <button
+                type="button"
+                onClick={handleRegenerate}
+                className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Try Again
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+      </main>
+    );
+  }
+
+  // --------------------------------------------------
   // Loading state
   // --------------------------------------------------
 
-  if (isGenerating && !travelPlan) {
+  if (isGenerating || !travelPlan) {
     return (
       <main className="min-h-screen bg-[#f7f5f0] px-3 pb-24 pt-3 text-foreground dark:bg-[#111318] sm:px-5 sm:pt-4 lg:px-6">
         <div className="mx-auto max-w-7xl">
@@ -459,60 +848,6 @@ export function TripGenerationPage() {
         </div>
 
         <TripChatbot />
-      </main>
-    );
-  }
-
-  // --------------------------------------------------
-  // Error state
-  // --------------------------------------------------
-
-  if (error || !travelPlan) {
-    return (
-      <main className="min-h-screen bg-[#f7f5f0] px-3 py-6 text-foreground dark:bg-[#111318] sm:px-5 lg:px-6">
-        <div className="mx-auto max-w-2xl">
-
-          <div className="rounded-2xl border border-border bg-white p-6 text-center shadow-sm dark:bg-[#191c22]">
-
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500">
-              <RefreshCw className="h-5 w-5" />
-            </div>
-
-            <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-accent">
-              SmartTrip AI
-            </p>
-
-            <h1 className="mt-1 font-display text-xl font-semibold text-foreground">
-              We couldn't generate your trip
-            </h1>
-
-            <p className="mt-2 text-sm text-muted-foreground">
-              {error ?? "Something went wrong while preparing your itinerary."}
-            </p>
-
-            <div className="mt-5 flex items-center justify-center gap-2">
-
-              <Link
-                to="/plan-trip"
-                className="rounded-xl border border-border bg-white px-4 py-2 text-xs font-semibold text-foreground transition hover:bg-secondary"
-              >
-                Back to Plan Trip
-              </Link>
-
-              <button
-                type="button"
-                onClick={handleRegenerate}
-                className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Try Again
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
       </main>
     );
   }
@@ -755,9 +1090,8 @@ export function TripGenerationPage() {
               print:hidden
             "
           >
-
-            <AgentProgress agents={agents} />
-
+            {/* No AgentProgress here.
+                This trip has already been generated. */}
           </aside>
 
         </div>
